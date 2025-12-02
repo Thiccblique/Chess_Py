@@ -3,6 +3,12 @@
 from typing import List, Tuple, Optional
 from enum import Enum
 
+# Handle imports for both standalone and package execution
+try:
+    from .pieces import PieceFactory
+except ImportError:
+    from pieces import PieceFactory
+
 class PieceType(Enum):
     PAWN = 'p'
     ROOK = 'r'
@@ -75,120 +81,17 @@ class ChessBoard:
     
     def GetLegalMoves(self, row: int, col: int) -> List[Tuple[int, int]]:
         """Get all legal moves for piece at position"""
-        piece = self.GetPiece(row, col)
-        if piece == ".":
+        piece_char = self.GetPiece(row, col)
+        if piece_char == ".":
             return []
         
-        piece_type = piece.lower()
-        
-        if piece_type == 'p':
-            return self._GetPawnMoves(row, col, piece)
-        elif piece_type == 'n':
-            return self._GetKnightMoves(row, col, piece)
-        elif piece_type == 'r':
-            return self._GetRookMoves(row, col, piece)
-        elif piece_type == 'b':
-            return self._GetBishopMoves(row, col, piece)
-        elif piece_type == 'q':
-            return self._GetQueenMoves(row, col, piece)
-        elif piece_type == 'k':
-            return self._GetKingMoves(row, col, piece)
-        
-        return []
+        try:
+            piece = PieceFactory.create_piece(piece_char)
+            return piece.get_moves(row, col, self)
+        except ValueError:
+            return []
     
-    def _GetPawnMoves(self, row: int, col: int, piece: str) -> List[Tuple[int, int]]:
-        """Calculate pawn movement"""
-        moves = []
-        is_white = self.IsWhitePiece(piece)
-        direction = -1 if is_white else 1
-        start_row = 6 if is_white else 1
-        
-        # Forward movement
-        new_row = row + direction
-        if self.IsValidPosition(new_row, col) and self.IsEmpty(new_row, col):
-            moves.append((new_row, col))
-            
-            # Double move from starting position
-            if row == start_row and self.IsEmpty(new_row + direction, col):
-                moves.append((new_row + direction, col))
-        
-        # Diagonal captures
-        for dc in [-1, 1]:
-            new_col = col + dc
-            if self.IsValidPosition(new_row, new_col):
-                target = self.GetPiece(new_row, new_col)
-                if not self.IsEmpty(new_row, new_col) and self.IsEnemyPiece(piece, target):
-                    moves.append((new_row, new_col))
-        
-        return moves
-    
-    def _GetKnightMoves(self, row: int, col: int, piece: str) -> List[Tuple[int, int]]:
-        """Calculate knight movement"""
-        moves = []
-        knight_offsets = [(2,1), (2,-1), (-2,1), (-2,-1), (1,2), (1,-2), (-1,2), (-1,-2)]
-        
-        for dr, dc in knight_offsets:
-            new_row, new_col = row + dr, col + dc
-            if self.IsValidPosition(new_row, new_col):
-                target = self.GetPiece(new_row, new_col)
-                if self.IsEmpty(new_row, new_col) or self.IsEnemyPiece(piece, target):
-                    moves.append((new_row, new_col))
-        
-        return moves
-    
-    def _GetRookMoves(self, row: int, col: int, piece: str) -> List[Tuple[int, int]]:
-        """Calculate rook movement"""
-        directions = [(-1,0), (1,0), (0,-1), (0,1)]
-        return self._GetSlidingMoves(row, col, piece, directions)
-    
-    def _GetBishopMoves(self, row: int, col: int, piece: str) -> List[Tuple[int, int]]:
-        """Calculate bishop movement"""
-        directions = [(-1,-1), (-1,1), (1,-1), (1,1)]
-        return self._GetSlidingMoves(row, col, piece, directions)
-    
-    def _GetQueenMoves(self, row: int, col: int, piece: str) -> List[Tuple[int, int]]:
-        """Calculate queen movement (combines rook and bishop)"""
-        directions = [(-1,0), (1,0), (0,-1), (0,1), (-1,-1), (-1,1), (1,-1), (1,1)]
-        return self._GetSlidingMoves(row, col, piece, directions)
-    
-    def _GetKingMoves(self, row: int, col: int, piece: str) -> List[Tuple[int, int]]:
-        """Calculate king movement"""
-        moves = []
-        
-        for dr in [-1, 0, 1]:
-            for dc in [-1, 0, 1]:
-                if dr == 0 and dc == 0:
-                    continue
-                
-                new_row, new_col = row + dr, col + dc
-                if self.IsValidPosition(new_row, new_col):
-                    target = self.GetPiece(new_row, new_col)
-                    if self.IsEmpty(new_row, new_col) or self.IsEnemyPiece(piece, target):
-                        moves.append((new_row, new_col))
-        
-        return moves
-    
-    def _GetSlidingMoves(self, row: int, col: int, piece: str, directions: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
-        """Calculate sliding piece movement (rook, bishop, queen)"""
-        moves = []
-        
-        for dr, dc in directions:
-            new_row, new_col = row + dr, col + dc
-            
-            while self.IsValidPosition(new_row, new_col):
-                target = self.GetPiece(new_row, new_col)
-                
-                if self.IsEmpty(new_row, new_col):
-                    moves.append((new_row, new_col))
-                else:
-                    if self.IsEnemyPiece(piece, target):
-                        moves.append((new_row, new_col))
-                    break  # Can't move past any piece
-                
-                new_row += dr
-                new_col += dc
-        
-        return moves
+
     
     # ===== GAME ACTIONS =====
     
